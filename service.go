@@ -44,9 +44,26 @@ func watchTaskId(newTaskId chan int) {
 	}
 }
 
+func watchNotification(notificationRequest chan bool) {
+	for {
+		<-time.Tick(time.Second * 2)
+		if GetNotifyRequest() {
+			RemoveNotifyRequest()
+			notificationRequest <- true
+		}
+	}
+}
+
+func Notify() {
+	PutNotifyRequest()
+}
+
 func Start() {
 	newTaskChan := make(chan int)
 	go watchTaskId(newTaskChan)
+
+	manualReminder := make(chan bool)
+	go watchNotification(manualReminder)
 
 	var cancelReminders chan bool
 	for {
@@ -65,7 +82,7 @@ func Start() {
 
 		// asynchronously set up reminders, with a channel that ensures cancellation
 		cancelReminders = make(chan bool)
-		go IssueRemindersAndLogTime(time.Now(), task, cancelReminders)
+		go IssueRemindersAndLogTime(time.Now(), task, manualReminder, cancelReminders)
 	}
 
 }

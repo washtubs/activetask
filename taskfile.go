@@ -7,28 +7,33 @@ import (
 	"strconv"
 )
 
-func OpenActiveTaskFileOrPanic() *os.File {
+func openFileOrPanic(file string, readOnly bool) *os.File {
 
-	activetaskPath := os.Getenv("HOME") + "/.activetask"
+	var f *os.File
+	var err error
 
-	f, err := os.Open(activetaskPath)
+	if readOnly {
+		f, err = os.Open(file)
+	} else {
+		f, err = os.Create(file)
+	}
 	if err != nil {
 		if os.IsNotExist(err) {
-			f, err := os.Create(activetaskPath)
+			f, err := os.Create(file)
 			if err != nil {
-				panic("Failed to create " + activetaskPath + " : " + err.Error())
+				panic("Failed to create " + file + " : " + err.Error())
 			}
-			log.Println(activetaskPath + " created.")
+			log.Println(file + " created.")
 			return f
 		}
-		panic("~/.activetask file inaccessible : " + err.Error())
+		panic(file + " file inaccessible : " + err.Error())
 	}
 	return f
 
 }
 
-func GetTaskId() int {
-	f := OpenActiveTaskFileOrPanic()
+func getIdFromFile(file string) int {
+	f := openFileOrPanic(file, true)
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
 	if scanner.Scan() {
@@ -40,5 +45,36 @@ func GetTaskId() int {
 		}
 	} else {
 		return -1
+	}
+}
+
+func GetTaskId() int {
+	activetaskPath := os.Getenv("HOME") + "/.activetask"
+	return getIdFromFile(activetaskPath)
+}
+
+func GetNotifyRequest() bool {
+	notifyRequestPath := os.Getenv("HOME") + "/.activetask-notify"
+	return getIdFromFile(notifyRequestPath) == 1
+}
+
+func PutNotifyRequest() {
+	notifyRequestPath := os.Getenv("HOME") + "/.activetask-notify"
+	f := openFileOrPanic(notifyRequestPath, false)
+	defer f.Close()
+	_, err := f.WriteString("1")
+	if err != nil {
+		panic(err.Error())
+	}
+
+}
+
+func RemoveNotifyRequest() {
+	notifyRequestPath := os.Getenv("HOME") + "/.activetask-notify"
+	f := openFileOrPanic(notifyRequestPath, false)
+	defer f.Close()
+	_, err := f.WriteString("-1")
+	if err != nil {
+		panic(err.Error())
 	}
 }

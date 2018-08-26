@@ -47,7 +47,7 @@ func fuzzDuration(duration time.Duration, fuzz float64) time.Duration {
 
 // Start issuing reminders on a graduated interval, indicating the time when the task started
 // If the task is null, remind the user that they have no current task
-func IssueRemindersAndLogTime(startTime time.Time, task *todolist.Todo, cancel chan bool) {
+func IssueRemindersAndLogTime(startTime time.Time, task *todolist.Todo, manualReminder chan bool, cancel chan bool) {
 	var i, taskId int
 
 	var intervals []time.Duration
@@ -63,6 +63,7 @@ func IssueRemindersAndLogTime(startTime time.Time, task *todolist.Todo, cancel c
 	for {
 
 		interval := fuzzDuration(intervals[i], 0.15)
+		intervalTicked := false
 
 		select {
 		case <-cancel:
@@ -70,6 +71,8 @@ func IssueRemindersAndLogTime(startTime time.Time, task *todolist.Todo, cancel c
 			LogTime(startTime, task)
 			return
 		case <-time.Tick(interval):
+			intervalTicked = true
+		case <-manualReminder:
 		}
 
 		if task == nil {
@@ -79,7 +82,7 @@ func IssueRemindersAndLogTime(startTime time.Time, task *todolist.Todo, cancel c
 				"Started "+humanize.Time(startTime), "")
 		}
 
-		if i+1 != len(intervals) {
+		if intervalTicked && i+1 != len(intervals) {
 			i++
 		}
 	}
