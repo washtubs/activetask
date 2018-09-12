@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 )
 
@@ -59,7 +60,7 @@ func GetNotifyRequest() bool {
 }
 
 func PutNotifyRequest() {
-	notifyRequestPath := os.Getenv("HOME") + "/.activetask-notify"
+	notifyRequestPath := filepath.Join(os.Getenv("HOME"), ".activetask-notify")
 	f := openFileOrPanic(notifyRequestPath, false)
 	defer f.Close()
 	_, err := f.WriteString("1")
@@ -70,7 +71,7 @@ func PutNotifyRequest() {
 }
 
 func RemoveNotifyRequest() {
-	notifyRequestPath := os.Getenv("HOME") + "/.activetask-notify"
+	notifyRequestPath := filepath.Join(os.Getenv("HOME"), ".activetask-notify")
 	f := openFileOrPanic(notifyRequestPath, false)
 	defer f.Close()
 	_, err := f.WriteString("-1")
