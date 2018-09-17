@@ -34,7 +34,7 @@ var graduatedNotificationIntervalsNoTask []time.Duration = []time.Duration{
 func LogTime(startTime time.Time, task *todolist.Todo) {
 	if task != nil {
 		beeep.Notify("[active-task] #"+strconv.Itoa(task.Id)+" "+task.Subject,
-			"Logged "+humanize.RelTime(startTime, time.Now(), "", ""), "")
+			"Logged "+humanize.RelTime(startTime, time.Now(), "", ""), "a")
 	}
 }
 
