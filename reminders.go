@@ -76,10 +76,10 @@ func IssueRemindersAndLogTime(startTime time.Time, task *todolist.Todo, manualRe
 		}
 
 		if task == nil {
-			beeep.Notify("[active-task] No task", "No current task, assign a task", "")
+			beeep.Notify("[active-task] No task", "No current task, assign a task", "a")
 		} else {
 			beeep.Notify("[active-task] #"+strconv.Itoa(taskId)+" "+task.Subject,
-				"Started "+humanize.Time(startTime), "")
+				"Started "+humanize.Time(startTime), "a")
 		}
 
 		if intervalTicked && i+1 != len(intervals) {
