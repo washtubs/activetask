@@ -1,8 +1,13 @@
 package activetask
 
 import (
+	"bytes"
 	"fmt"
 	"log"
+	"os"
+	"os/exec"
+	"strings"
+	"text/template"
 	"time"
 )
 
@@ -85,6 +90,41 @@ func Start() {
 		// asynchronously set up reminders, with a channel that ensures cancellation
 		cancelReminders = make(chan bool)
 		go IssueRemindersAndLogTime(time.Now(), task, manualReminder, cancelReminders)
+	}
+
+}
+
+func Watch(includeNotWorking bool, shellCommand string) error {
+	newTaskChan := make(chan int)
+	go watchTaskId(newTaskChan)
+	for {
+		// got a task, but might be -1
+		current := <-newTaskChan
+
+		task := GetTaskById(current)
+
+		if includeNotWorking || task != nil {
+			t, err := template.New(shellCommand).Funcs(template.FuncMap{"StringsJoin": strings.Join}).Parse(shellCommand)
+			if err != nil {
+				return err
+			}
+
+			buf := bytes.NewBufferString("")
+			err = t.Execute(buf, task)
+			if err != nil {
+				log.Printf("Failed to execute template with the given task %+v: %s", task, err.Error())
+			}
+
+			shellCommandRendered := buf.String()
+			cmd := exec.Command("sh", "-c", shellCommandRendered)
+			cmd.Stderr = os.Stderr
+			cmd.Stdout = os.Stdout
+			err = cmd.Run()
+			if err != nil {
+				log.Printf("Got error executing command=[%s]: %s", shellCommandRendered, err.Error())
+			}
+
+		}
 	}
 
 }
