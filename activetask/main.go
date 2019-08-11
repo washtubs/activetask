@@ -1,14 +1,20 @@
 package main
 
-import "github.com/washtubs/activetask"
-import "os"
+import (
+	"fmt"
+	"os"
+
+	"github.com/washtubs/activetask"
+)
 
 func main() {
 	if len(os.Args) > 1 {
 		if os.Args[1] == "notify" {
 			activetask.Notify()
-			os.Exit(0)
+		} else if os.Args[1] == "message" {
+			fmt.Println(activetask.GetTaskMessage())
 		}
+		os.Exit(0)
 	}
 	activetask.Start()
 }

@@ -1,6 +1,7 @@
 package activetask
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"strconv"
@@ -78,7 +79,7 @@ func IssueRemindersAndLogTime(startTime time.Time, task *todolist.Todo, manualRe
 		if task == nil {
 			beeep.Notify("[active-task] No task", "No current task, assign a task", "")
 		} else {
-			beeep.Notify("[active-task] #"+strconv.Itoa(taskId)+" "+task.Subject,
+			beeep.Notify(fmt.Sprintf("[active-task] #%d %s", taskId, task.Subject),
 				"Started "+humanize.Time(startTime), "")
 		}
 

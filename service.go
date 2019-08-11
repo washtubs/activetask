@@ -1,8 +1,10 @@
 package activetask
 
-import "log"
-
-import "time"
+import (
+	"fmt"
+	"log"
+	"time"
+)
 
 const notWorkingTaskId = -1
 
@@ -85,4 +87,14 @@ func Start() {
 		go IssueRemindersAndLogTime(time.Now(), task, manualReminder, cancelReminders)
 	}
 
+}
+
+func GetTaskMessage() string {
+	taskId := GetTaskId()
+	task := GetTaskById(taskId)
+	if task == nil {
+		return "No task"
+	} else {
+		return fmt.Sprintf("#%d %s", taskId, task.Subject)
+	}
 }
