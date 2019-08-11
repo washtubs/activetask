@@ -113,6 +113,7 @@ func Watch(includeNotWorking bool, shellCommand string) error {
 			err = t.Execute(buf, task)
 			if err != nil {
 				log.Printf("Failed to execute template with the given task %+v: %s", task, err.Error())
+				return err
 			}
 
 			shellCommandRendered := buf.String()
@@ -122,6 +123,7 @@ func Watch(includeNotWorking bool, shellCommand string) error {
 			err = cmd.Run()
 			if err != nil {
 				log.Printf("Got error executing command=[%s]: %s", shellCommandRendered, err.Error())
+				return err
 			}
 
 		}
