@@ -1,8 +1,15 @@
 package activetask
 
-import "log"
-
-import "time"
+import (
+	"bytes"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"strings"
+	"text/template"
+	"time"
+)
 
 const notWorkingTaskId = -1
 
@@ -85,4 +92,51 @@ func Start() {
 		go IssueRemindersAndLogTime(time.Now(), task, manualReminder, cancelReminders)
 	}
 
+}
+
+func Watch(includeNotWorking bool, shellCommand string) error {
+	newTaskChan := make(chan int)
+	go watchTaskId(newTaskChan)
+	for {
+		// got a task, but might be -1
+		current := <-newTaskChan
+
+		task := GetTaskById(current)
+
+		if includeNotWorking || task != nil {
+			t, err := template.New(shellCommand).Funcs(template.FuncMap{"StringsJoin": strings.Join}).Parse(shellCommand)
+			if err != nil {
+				return err
+			}
+
+			buf := bytes.NewBufferString("")
+			err = t.Execute(buf, task)
+			if err != nil {
+				log.Printf("Failed to execute template with the given task %+v: %s", task, err.Error())
+				return err
+			}
+
+			shellCommandRendered := buf.String()
+			cmd := exec.Command("sh", "-c", shellCommandRendered)
+			cmd.Stderr = os.Stderr
+			cmd.Stdout = os.Stdout
+			err = cmd.Run()
+			if err != nil {
+				log.Printf("Got error executing command=[%s]: %s", shellCommandRendered, err.Error())
+				return err
+			}
+
+		}
+	}
+
+}
+
+func GetTaskMessage() string {
+	taskId := GetTaskId()
+	task := GetTaskById(taskId)
+	if task == nil {
+		return "No task"
+	} else {
+		return fmt.Sprintf("#%d %s", taskId, task.Subject)
+	}
 }
