@@ -134,7 +134,7 @@ func Watch(includeNotWorking bool, shellCommand string) error {
 func GetTaskMessage() string {
 	taskId := GetTaskId()
 	task := GetTaskById(taskId)
-	if task == nil {
+	if task == nil || task.Completed {
 		return "No task"
 	} else {
 		return fmt.Sprintf("#%d %s", taskId, task.Subject)
