@@ -61,9 +61,10 @@ func IssueRemindersAndLogTime(startTime time.Time, task *todolist.Todo, manualRe
 		intervals = graduatedNotificationIntervals
 	}
 	i = 0
+	// Initial ticker
+	ticker := time.NewTicker(fuzzDuration(intervals[i], 0.15))
 	for {
 
-		interval := fuzzDuration(intervals[i], 0.15)
 		intervalTicked := false
 
 		select {
@@ -71,7 +72,7 @@ func IssueRemindersAndLogTime(startTime time.Time, task *todolist.Todo, manualRe
 			log.Printf("Aborting reminders for %d", taskId)
 			LogTime(startTime, task)
 			return
-		case <-time.Tick(interval):
+		case <-ticker.C:
 			intervalTicked = true
 		case <-manualReminder:
 		}
@@ -85,6 +86,8 @@ func IssueRemindersAndLogTime(startTime time.Time, task *todolist.Todo, manualRe
 
 		if intervalTicked && i+1 != len(intervals) {
 			i++
+			ticker.Stop()
+			ticker = time.NewTicker(fuzzDuration(intervals[i], 0.15))
 		}
 	}
 

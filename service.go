@@ -36,24 +36,33 @@ func IsNotWorking(taskId int) bool {
 // if the ID corresponds to an incomplete task, place that ID on the channel
 // if note, place the `notWorkingTaskId` on the channel
 func watchTaskId(newTaskId chan int) {
-	last := -999 // force the channel to always fire immediately
+	last := -999 // force the channel to always fire in the first cycle
+
+	// Really important that we don't use `time.Tick` every 2s as that causes a resource leak of one goroutine every 2s.
+	// In practice, this starts causing performance degradation (>100% CPU) after several days
+	// I see ~180% CPU usage for a process that's been running for 713h,
+	// which goes to show that it's very mild but it definitely adds up.
+	ticker := time.NewTicker(time.Second * 2)
 	for {
-		<-time.Tick(time.Second * 2)
-		current := GetTaskId()
-		if IsNotWorking(current) {
-			current = notWorkingTaskId
+		<-ticker.C
+
+		currentId := GetTaskId()
+		if IsNotWorking(currentId) {
+			currentId = notWorkingTaskId
 		}
-		if current != last {
-			newTaskId <- current
-			last = current
-			log.Printf("id %d", current)
+
+		if currentId != last {
+			newTaskId <- currentId
+			last = currentId
+			log.Printf("id %d", currentId)
 		}
 	}
 }
 
 func watchNotification(notificationRequest chan bool) {
+	ticker := time.NewTicker(time.Second * 2)
 	for {
-		<-time.Tick(time.Second * 2)
+		<-ticker.C
 		if GetNotifyRequest() {
 			RemoveNotifyRequest()
 			notificationRequest <- true
@@ -66,7 +75,7 @@ func Notify() {
 }
 
 func Start() {
-	newTaskChan := make(chan int)
+	newTaskChan := make(chan int, 1)
 	go watchTaskId(newTaskChan)
 
 	manualReminder := make(chan bool)
@@ -75,12 +84,17 @@ func Start() {
 	var cancelReminders chan bool
 	for {
 		// got a task, but might be -1
-		current := <-newTaskChan
+		currentId := <-newTaskChan
 
 		// asyncronously ensure that the last IssueReminders is cleaned up
-		go func(cancel chan bool) { cancel <- true }(cancelReminders)
+		go func(cancel chan bool) {
+			select {
+			case cancel <- true:
+			default:
+			}
+		}(cancelReminders)
 
-		task := GetTaskById(current)
+		task := GetTaskById(currentId)
 		if task != nil {
 			log.Print("Got task " + task.Subject)
 		} else {
@@ -95,13 +109,13 @@ func Start() {
 }
 
 func Watch(includeNotWorking bool, shellCommand string) error {
-	newTaskChan := make(chan int)
+	newTaskChan := make(chan int, 1)
 	go watchTaskId(newTaskChan)
 	for {
 		// got a task, but might be -1
-		current := <-newTaskChan
+		currentId := <-newTaskChan
 
-		task := GetTaskById(current)
+		task := GetTaskById(currentId)
 
 		if includeNotWorking || task != nil {
 			t, err := template.New(shellCommand).Funcs(template.FuncMap{"StringsJoin": strings.Join}).Parse(shellCommand)
