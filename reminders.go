@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/gammons/todolist/todolist"
 	"github.com/gen2brain/beeep"
+	"github.com/washtubs/todolist/todolist"
 )
 
 // The idea behind a graduated interval is that sometimes we expect tasks to
@@ -77,11 +77,15 @@ func IssueRemindersAndLogTime(startTime time.Time, task *todolist.Todo, manualRe
 		case <-manualReminder:
 		}
 
+		var err error
 		if task == nil {
-			beeep.Notify("[active-task] No task", "No current task, assign a task", "a")
+			err = beeep.Notify("[active-task] No task", "No current task, assign a task", "a")
 		} else {
-			beeep.Notify(fmt.Sprintf("[active-task] #%d %s", taskId, task.Subject),
+			err = beeep.Notify(fmt.Sprintf("[active-task] #%d %s", taskId, task.Subject),
 				"Started "+humanize.Time(startTime), "a")
+		}
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		if intervalTicked && i+1 != len(intervals) {
