@@ -1,0 +1,8 @@
+version: '3.3'
+services:
+    docs:
+        image: washtubs/doc-services:latest
+        ports:
+            - 8001:8000
+        volumes:
+            - ./doc:/mnt/input

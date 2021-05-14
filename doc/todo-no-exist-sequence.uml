@@ -1,0 +1,34 @@
+
+     ┌────────┐                 ┌──────┐                   ┌────────┐
+     │TaskFile│                 │Daemon│                   │TodoList│
+     └───┬────┘                 └──┬───┘                   └───┬────┘
+         │ FileChanged; new Todo ID│                           │
+         │ ────────────────────────>                           │
+         │                         │                           │
+         │                         │ Request Todo from TodoList│
+         │                         │ ──────────────────────────>
+         │                         │                           │
+         │                         │   Return NOT incomplete   │
+         │                         │ <─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+         │                         │                           │
+         │                         │                           │
+         │            ╔═══════╤════╪═══════════════╗           │
+         │            ║ LOOP  │  until FileChanged ║           │
+         │            ╟───────┘    │               ║           │
+         │            ║            │────┐          ║           │
+         │            ║            │    │ sleep    ║           │
+         │            ║            │<───┘          ║           │
+         │            ╚════════════╪═══════════════╝           │
+     ┌───┴────┐                 ┌──┴───┐                   ┌───┴────┐
+     │TaskFile│                 │Daemon│                   │TodoList│
+     └────────┘                 └──────┘                   └────────┘
+
+@startuml
+TaskFile -> Daemon : FileChanged; new Todo ID
+Daemon -> TodoList : Request Todo from TodoList
+Daemon <-- TodoList : Return NOT incomplete
+loop until FileChanged
+    Daemon -> Daemon : sleep
+end
+@enduml
+

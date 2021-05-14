@@ -1,0 +1,41 @@
+
+     ┌────────┐                ┌──────┐                          ┌────────┐          ┌───────────────────┐
+     │TaskFile│                │Daemon│                          │TodoList│          │NotificationService│
+     └───┬────┘                └──┬───┘                          └───┬────┘          └─────────┬─────────┘
+         │ FileChanged; new TodoID│                                  │                         │
+         │ ───────────────────────>                                  │                         │
+         │                        │                                  │                         │
+         │                        │    Request Todo from TodoList    │                         │
+         │                        │ ─────────────────────────────────>                         │
+         │                        │                                  │                         │
+         │                        │    Return incomplete Todo JSON   │                         │
+         │                        │ <─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─                         │
+         │                        │                                  │                         │
+         │                        │               Notify with Todo message start               │
+         │                        │ ──────────────────────────────────────────────────────────>│
+         │                        │                                  │                         │
+         │                        │                                  │                         │
+         │           ╔═══════╤════╪══════════════════════════════════╪═════════════════════════╪═══════════════════╗
+         │           ║ LOOP  │  until FileChanged                    │                         │                   ║
+         │           ╟───────┘    │                                  │                         │                   ║
+         │           ║            │                  Notify with Todo message                  │                   ║
+         │           ║            │ ──────────────────────────────────────────────────────────>│                   ║
+         │           ║            │                                  │                         │                   ║
+         │           ║            │────┐                                                       │                   ║
+         │           ║            │    │ Wait using graduated interval                         │                   ║
+         │           ║            │<───┘                                                       │                   ║
+         │           ╚════════════╪══════════════════════════════════╪═════════════════════════╪═══════════════════╝
+     ┌───┴────┐                ┌──┴───┐                          ┌───┴────┐          ┌─────────┴─────────┐
+     │TaskFile│                │Daemon│                          │TodoList│          │NotificationService│
+     └────────┘                └──────┘                          └────────┘          └───────────────────┘
+
+@startuml
+TaskFile -> Daemon : FileChanged; new TodoID
+Daemon -> TodoList : Request Todo from TodoList
+Daemon <-- TodoList : Return incomplete Todo JSON
+Daemon -> NotificationService : Notify with Todo message start
+loop until FileChanged
+    Daemon -> NotificationService : Notify with Todo message
+    Daemon -> Daemon : Wait using graduated interval
+end
+@enduml
