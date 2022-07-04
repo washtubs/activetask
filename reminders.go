@@ -50,8 +50,11 @@ func fuzzDuration(duration time.Duration, fuzz float64) time.Duration {
 
 func parseIdFromTask(task string) int {
 	// Any number which starts within 5 characters of the task message is the id
-	r := regexp.MustCompile(".{0,5}([0-9]+)")
+	r := regexp.MustCompile("[^0-9]{0,5}([0-9]+)")
 	submatches := r.FindStringSubmatch(task)
+	if submatches == nil {
+		return notWorkingTaskId
+	}
 	if submatches[1] == "" {
 		return notWorkingTaskId
 	}
