@@ -1,42 +1,20 @@
 package activetask
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
-	"strings"
-	"text/template"
 	"time"
 )
 
-const notWorkingTaskId = -1
-
-func IsNotWorking(taskId int) bool {
-	if taskId < 1 {
-		// IDs below 1 are impossible
-		return true
-	}
-
-	// actually look up the task
-	task := GetTaskById(taskId)
-	if task == nil {
-		// if it doesn't exist it's deleted or something.
-		return true
-	} else if task.Completed {
-		// if it's completed we're not actually working on anything
-		return true
-	}
-
-	return false
+func IsNotWorking(taskMessage string) bool {
+	return taskMessage == ""
 }
 
-// watches the activetask file
-// if the ID corresponds to an incomplete task, place that ID on the channel
-// if note, place the `notWorkingTaskId` on the channel
-func watchTaskId(newTaskId chan int) {
-	last := -999 // force the channel to always fire in the first cycle
+// watches the activetask file for new messages
+func watchTask(newTask chan string) {
+	last := "" // force the channel to always fire in the first cycle
 
 	// Really important that we don't use `time.Tick` every 2s as that causes a resource leak of one goroutine every 2s.
 	// In practice, this starts causing performance degradation (>100% CPU) after several days
@@ -46,15 +24,12 @@ func watchTaskId(newTaskId chan int) {
 	for {
 		<-ticker.C
 
-		currentId := GetTaskId()
-		if IsNotWorking(currentId) {
-			currentId = notWorkingTaskId
-		}
+		current := getTaskMessage()
 
-		if currentId != last {
-			newTaskId <- currentId
-			last = currentId
-			log.Printf("id %d", currentId)
+		if current != last {
+			newTask <- current
+			last = current
+			log.Printf("task %s", current)
 		}
 	}
 }
@@ -75,8 +50,8 @@ func Notify() {
 }
 
 func Start() {
-	newTaskChan := make(chan int, 1)
-	go watchTaskId(newTaskChan)
+	newTaskChan := make(chan string, 1)
+	go watchTask(newTaskChan)
 
 	manualReminder := make(chan bool)
 	go watchNotification(manualReminder)
@@ -84,7 +59,7 @@ func Start() {
 	var cancelReminders chan bool
 	for {
 		// got a task, but might be -1
-		currentId := <-newTaskChan
+		task := <-newTaskChan
 
 		// asyncronously ensure that the last IssueReminders is cleaned up
 		go func(cancel chan bool) {
@@ -94,13 +69,6 @@ func Start() {
 			}
 		}(cancelReminders)
 
-		task := GetTaskById(currentId)
-		if task != nil {
-			log.Print("Got task " + task.Subject)
-		} else {
-			log.Print("Got no task.")
-		}
-
 		// asynchronously set up reminders, with a channel that ensures cancellation
 		cancelReminders = make(chan bool)
 		go IssueRemindersAndLogTime(time.Now(), task, manualReminder, cancelReminders)
@@ -108,35 +76,20 @@ func Start() {
 
 }
 
-func Watch(includeNotWorking bool, shellCommand string) error {
-	newTaskChan := make(chan int, 1)
-	go watchTaskId(newTaskChan)
+func Watch(includeNotWorking bool, command string) error {
+	newTaskChan := make(chan string, 1)
+	go watchTask(newTaskChan)
 	for {
-		// got a task, but might be -1
-		currentId := <-newTaskChan
+		// got a task, but might be empty
+		task := <-newTaskChan
 
-		task := GetTaskById(currentId)
-
-		if includeNotWorking || task != nil {
-			t, err := template.New(shellCommand).Funcs(template.FuncMap{"StringsJoin": strings.Join}).Parse(shellCommand)
-			if err != nil {
-				return err
-			}
-
-			buf := bytes.NewBufferString("")
-			err = t.Execute(buf, task)
-			if err != nil {
-				log.Printf("Failed to execute template with the given task %+v: %s", task, err.Error())
-				return err
-			}
-
-			shellCommandRendered := buf.String()
-			cmd := exec.Command("sh", "-c", shellCommandRendered)
+		if includeNotWorking || task != "" {
+			cmd := exec.Command(command, task)
 			cmd.Stderr = os.Stderr
 			cmd.Stdout = os.Stdout
-			err = cmd.Run()
+			err := cmd.Run()
 			if err != nil {
-				log.Printf("Got error executing command=[%s]: %s", shellCommandRendered, err.Error())
+				log.Printf("Got error executing command=[%+v]: %s", cmd, err.Error())
 				return err
 			}
 
@@ -146,11 +99,10 @@ func Watch(includeNotWorking bool, shellCommand string) error {
 }
 
 func GetTaskMessage() string {
-	taskId := GetTaskId()
-	task := GetTaskById(taskId)
-	if task == nil || task.Completed {
+	task := getTaskMessage()
+	if task == "" {
 		return "No task"
 	} else {
-		return fmt.Sprintf("#%d %s", taskId, task.Subject)
+		return fmt.Sprintf("%s", task)
 	}
 }

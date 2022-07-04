@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 func openFileOrPanic(file string, readOnly bool) *os.File {
@@ -49,9 +50,16 @@ func getIdFromFile(file string) int {
 	}
 }
 
-func GetTaskId() int {
+func getTaskMessage() string {
 	activetaskPath := os.Getenv("HOME") + "/.activetask"
-	return getIdFromFile(activetaskPath)
+	f := openFileOrPanic(activetaskPath, true)
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	if scanner.Scan() {
+		return strings.TrimSpace(scanner.Text())
+	} else {
+		return ""
+	}
 }
 
 func GetNotifyRequest() bool {
